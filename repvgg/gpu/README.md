@@ -13,7 +13,46 @@ RepVGG is an efficient CNN architecture for image classification that achieves e
 pip install -r requirements.txt
 ```
 
-2. (Optional) Download ImageNet class labels:
+2. **Download Model Weights**
+
+Download the RepVGG model weights from the [official repository](https://github.com/DingXiaoH/RepVGG):
+
+**Option A: Using wget (recommended)**
+
+```bash
+# RepVGG-A0 (72.41% ImageNet top-1 accuracy)
+wget https://drive.google.com/uc?export=download&id=1HN_TNXAyJKJWCcbITxLGRVzW3T7zgVLa -O RepVGG-A0-train.pth
+
+# RepVGG-B0 (75.14% ImageNet top-1 accuracy) - Default
+wget https://drive.google.com/uc?export=download&id=1nCxqOHN2kX8Mb2XhzHEz0XYMtmPK3KbI -O RepVGG-B0-train.pth
+
+# RepVGG-B1 (78.37% ImageNet top-1 accuracy)
+wget https://drive.google.com/uc?export=download&id=1D_FoScT3ckVVhLJEbdAlO8GdzwIq4Aqr -O RepVGG-B1-train.pth
+
+# RepVGG-B2 (78.78% ImageNet top-1 accuracy)
+wget https://drive.google.com/uc?export=download&id=1U0JRJiPXyX9SHuXVqSTd9ESDPVPcWsQz -O RepVGG-B2-train.pth
+```
+
+**Option B: Manual Download**
+
+Visit the [RepVGG GitHub repository](https://github.com/DingXiaoH/RepVGG#use-our-pretrained-models) and download the weights manually.
+
+Available models:
+- **RepVGG-A0-train.pth** - Smallest, fastest (72.41% top-1)
+- **RepVGG-B0-train.pth** - Balanced (75.14% top-1) ⭐ Recommended
+- **RepVGG-B1-train.pth** - Larger, more accurate (78.37% top-1)
+- **RepVGG-B2-train.pth** - Largest, most accurate (78.78% top-1)
+
+After downloading, place the .pth file in the same directory as `inference.py`:
+```
+repvgg/gpu/
+├── inference.py
+├── requirements.txt
+├── RepVGG-B0-train.pth
+└── (other files...)
+```
+
+3. (Optional) Download ImageNet class labels:
 ```bash
 python download_labels.py
 ```

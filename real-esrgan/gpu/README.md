@@ -9,13 +9,57 @@ Python script for running Real-ESRGAN image upscaling with GPU acceleration.
 pip install -r requirements.txt
 ```
 
-2. Ensure model weights are in the `weights/` folder. Common models:
-   - `RealESRGAN_x4plus.pth` - General purpose 4x upscaling
-   - `RealESRNet_x4plus.pth` - 4x upscaling (training model)
-   - `RealESRGAN_x4plus_anime_6B.pth` - Anime images 4x
-   - `RealESRGAN_x2plus.pth` - 2x upscaling
-   - `realesr-animevideov3.pth` - Anime video frames
-   - `realesr-general-x4v3.pth` - General purpose v3
+2. **Download Model Weights**
+
+Create the weights directory:
+```bash
+mkdir -p weights
+cd weights
+```
+
+Download the model weights you need from the [Real-ESRGAN releases](https://github.com/xinntao/Real-ESRGAN/releases):
+
+**RealESRGAN_x4plus.pth** (Recommended - General purpose 4x upscaling):
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
+```
+
+**RealESRNet_x4plus.pth** (4x upscaling training model):
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.1/RealESRNet_x4plus.pth
+```
+
+**RealESRGAN_x4plus_anime_6B.pth** (Anime images 4x):
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth
+```
+
+**RealESRGAN_x2plus.pth** (2x upscaling):
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth
+```
+
+**realesr-animevideov3.pth** (Anime video frames):
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-animevideov3.pth
+```
+
+**realesr-general-x4v3.pth** (General purpose v3):
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+```
+
+Or download manually from: https://github.com/xinntao/Real-ESRGAN/releases
+
+After downloading, your directory structure should look like:
+```
+real-esrgan/gpu/
+├── inference.py
+├── requirements.txt
+└── weights/
+    ├── RealESRGAN_x4plus.pth
+    └── (other model files...)
+```
 
 ## Usage
 
