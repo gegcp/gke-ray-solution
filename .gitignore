@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# PyTorch / Deep Learning
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.pkl
+*.pickle
+*.safetensors
+
+# Model outputs and results
+results/
+output/
+outputs/
+checkpoints/
+
+# Images (uncomment if you don't want to track test images)
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.bmp
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Data
+data/
+datasets/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
