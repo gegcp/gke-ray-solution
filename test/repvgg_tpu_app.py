@@ -14,7 +14,7 @@
 
 """
 RepVGG TPU Inference with Ray Serve
-Image classification using RepVGG models on TPU
+Image classification using RepVGG models on TPU using torch-xla2 (torchax)
 """
 
 import os
@@ -33,6 +33,35 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 from ray import serve
+
+
+def patch_torchax_conv2d():
+    """Patch torchax conv2d to include default arguments"""
+    import torch_xla2.ops.ops_registry as ops_registry
+    import torch_xla2.ops.jaten as jaten_ops
+    from functools import wraps
+
+    original_conv2d = jaten_ops.conv2d
+
+    @wraps(original_conv2d)
+    def patched_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
+        return original_conv2d(input, weight, bias, stride, padding, dilation, groups)
+
+    ops_registry.register_torch_dispatch_op(
+        torch.ops.aten.conv2d,
+        patched_conv2d,
+        is_jax_function=True
+    )
+
+
+def set_model_float32(model):
+    """Ensure all conv layers use float32 precision"""
+    for module in model.modules():
+        if isinstance(module, nn.Conv2d):
+            module.weight.data = module.weight.data.to(torch.float32)
+            if module.bias is not None:
+                module.bias.data = module.bias.data.to(torch.float32)
+    return model
 
 
 def conv_bn(in_channels, out_channels, kernel_size, stride, padding, groups=1):
@@ -154,26 +183,62 @@ class RepVGGTPUDeployment:
     """RepVGG deployment for TPU inference"""
 
     def __init__(self):
-        """Initialize the RepVGG model on TPU node"""
+        """Initialize the RepVGG model on TPU with torch-xla2"""
         # Get model configuration from environment
         model_variant = os.environ.get('MODEL_VARIANT', 'B0')
         num_classes = int(os.environ.get('NUM_CLASSES', '1000'))
-        on_tpu_node = os.environ.get('TPU_NODE', 'false').lower() == 'true'
+        enable_tpu = os.environ.get('ENABLE_TPU', 'false').lower() == 'true'
 
         print(f"Initializing RepVGG-{model_variant}")
         print(f"Number of classes: {num_classes}")
-        print(f"Running on TPU node: {on_tpu_node}")
+        print(f"TPU acceleration enabled: {enable_tpu}")
 
-        # For now, use CPU (TPU support requires torch-xla2/JAX which takes long to install)
-        # TODO: Add full TPU support with torch-xla2
+        # Try to initialize TPU with torch-xla2 if enabled
         self.use_tpu = False
-        self.device_name = "TPU-node (CPU mode)" if on_tpu_node else "cpu"
-        self.device = torch.device('cpu')
+        self.env = None
 
-        print(f"Using device: {self.device}")
-        if on_tpu_node:
-            print("Note: Running on TPU node but using CPU for inference")
-            print("For full TPU support, add torch-xla2 to dependencies")
+        if enable_tpu:
+            try:
+                import jax
+                import torch_xla2
+
+                print("Initializing torch-xla2 (torchax) for TPU...")
+
+                # Set JAX configuration for highest precision
+                jax.config.update('jax_default_matmul_precision', 'highest')
+
+                # Patch conv2d before initializing torchax
+                patch_torchax_conv2d()
+
+                # Initialize torchax environment
+                self.env = torch_xla2.default_env()
+                self.env.__enter__()
+
+                self.use_tpu = True
+                self.device_name = "TPU (JAX/XLA)"
+
+                print(f"✓ JAX devices: {jax.devices()}")
+                print(f"✓ JAX backend: {jax.default_backend()}")
+                print(f"✓ Using TPU with torch-xla2 (torchax)")
+
+            except ImportError as e:
+                print(f"⚠ torch-xla2 not available: {e}")
+                print("⚠ Falling back to CPU mode")
+                print("  To enable TPU: Set ENABLE_TPU=true and add jax[tpu], torch-xla2 to pip dependencies")
+                self.use_tpu = False
+                self.device_name = "CPU (TPU node)"
+
+            except Exception as e:
+                print(f"⚠ Could not initialize TPU: {e}")
+                print("⚠ Falling back to CPU mode")
+                self.use_tpu = False
+                self.device_name = "CPU (TPU node)"
+        else:
+            print("ℹ TPU acceleration disabled (ENABLE_TPU=false)")
+            print("  Running on TPU node in CPU mode")
+            print("  To enable: Set ENABLE_TPU=true and add torch-xla2 dependencies")
+            self.use_tpu = False
+            self.device_name = "CPU (TPU node)"
 
         # Create model
         if model_variant == 'A0':
@@ -182,13 +247,16 @@ class RepVGGTPUDeployment:
             self.model = create_RepVGG_B0(deploy=True, num_classes=num_classes)
 
         self.model.eval()
-        self.model = self.model.to(self.device)
+
+        # For TPU, ensure float32 precision
+        if self.use_tpu:
+            self.model = set_model_float32(self.model)
 
         # ImageNet normalization stats
         self.mean = np.array([0.485, 0.456, 0.406])
         self.std = np.array([0.229, 0.224, 0.225])
 
-        print("RepVGG model initialized successfully!")
+        print(f"✓ RepVGG model initialized successfully on {self.device_name}!")
 
     def preprocess_image(self, image: Image.Image, img_size: int = 224) -> torch.Tensor:
         """Preprocess image for RepVGG inference"""
@@ -244,14 +312,29 @@ class RepVGGTPUDeployment:
 
             # Preprocess image
             img_tensor = self.preprocess_image(image, img_size)
-            img_tensor = img_tensor.to(self.device)
 
             # Run inference
-            with torch.no_grad():
-                output = self.model(img_tensor)
+            if self.use_tpu:
+                # TPU inference with JAX
+                import jax
 
-            # Get probabilities
-            probabilities = torch.nn.functional.softmax(output[0], dim=0)
+                with torch.no_grad():
+                    output = self.model(img_tensor)
+
+                # Get probabilities
+                probabilities = torch.nn.functional.softmax(output[0], dim=0)
+
+                # Convert JAX array to numpy then back to torch for consistency
+                # This ensures computation is complete
+                probabilities_np = np.array(probabilities)
+                probabilities = torch.from_numpy(probabilities_np)
+            else:
+                # CPU inference
+                with torch.no_grad():
+                    output = self.model(img_tensor)
+
+                # Get probabilities
+                probabilities = torch.nn.functional.softmax(output[0], dim=0)
 
             # Get top K predictions
             top_prob, top_indices = torch.topk(probabilities, min(top_k, len(probabilities)))
@@ -277,14 +360,26 @@ class RepVGGTPUDeployment:
             )
 
     @app.get("/health")
-    async def health(self) -> Dict[str, str]:
+    async def health(self):
         """Health check endpoint"""
-        return {
+        health_info = {
             "status": "healthy",
             "model": "RepVGG-TPU",
             "device": self.device_name,
-            "note": "Running on TPU node, CPU inference (add torch-xla2 for TPU acceleration)"
+            "tpu_enabled": self.use_tpu
         }
+
+        if self.use_tpu:
+            try:
+                import jax
+                health_info["jax_backend"] = jax.default_backend()
+                health_info["jax_device_count"] = len(jax.devices())
+            except:
+                pass
+        else:
+            health_info["note"] = "Install torch-xla2 for TPU acceleration"
+
+        return health_info
 
 
 model = RepVGGTPUDeployment.bind()

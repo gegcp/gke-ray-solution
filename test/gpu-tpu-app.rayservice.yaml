@@ -42,11 +42,16 @@ spec:
       - name: RepVGGDeployment
         num_replicas: 1
       runtime_env:
-        pip: ["torch", "torchvision", "pillow", "numpy", "fastapi", "ray==2.40.0"]
+        pip:
+          - "torch"
+          - "torchvision"
+          - "pillow"
+          - "fastapi"
+          - "ray==2.40.0"
         env_vars:
           MODEL_VARIANT: "B0"
           NUM_CLASSES: "1000"
-          TPU_NODE: "true"
+          ENABLE_TPU: "false"
   rayClusterConfig:
     headGroupSpec:
       rayStartParams:
