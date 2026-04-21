@@ -36,22 +36,31 @@ from ray import serve
 
 
 def patch_torchax_conv2d():
-    """Patch torchax conv2d to include default arguments"""
-    import torch_xla2.ops.ops_registry as ops_registry
-    import torch_xla2.ops.jaten as jaten_ops
-    from functools import wraps
+    """Patch torchax conv2d to include default arguments (optional, for older torch-xla2 versions)"""
+    try:
+        import torch_xla2.ops.ops_registry as ops_registry
+        import torch_xla2.ops.jaten as jaten_ops
+        from functools import wraps
 
-    original_conv2d = jaten_ops.conv2d
+        # Check if conv2d exists in jaten_ops (may not exist in newer versions)
+        if not hasattr(jaten_ops, 'conv2d'):
+            print("ℹ Skipping conv2d patch (not needed in this torch-xla2 version)")
+            return
 
-    @wraps(original_conv2d)
-    def patched_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
-        return original_conv2d(input, weight, bias, stride, padding, dilation, groups)
+        original_conv2d = jaten_ops.conv2d
 
-    ops_registry.register_torch_dispatch_op(
-        torch.ops.aten.conv2d,
-        patched_conv2d,
-        is_jax_function=True
-    )
+        @wraps(original_conv2d)
+        def patched_conv2d(input, weight, bias=None, stride=1, padding=0, dilation=1, groups=1):
+            return original_conv2d(input, weight, bias, stride, padding, dilation, groups)
+
+        ops_registry.register_torch_dispatch_op(
+            torch.ops.aten.conv2d,
+            patched_conv2d,
+            is_jax_function=True
+        )
+        print("✓ Applied conv2d patch")
+    except Exception as e:
+        print(f"ℹ Skipping conv2d patch: {e}")
 
 
 def set_model_float32(model):
@@ -350,7 +359,7 @@ class RepVGGTPUDeployment:
             return JSONResponse(content={
                 "predictions": predictions,
                 "model": "RepVGG-TPU",
-                "device": str(self.device)
+                "device": self.device_name
             })
 
         except Exception as e:

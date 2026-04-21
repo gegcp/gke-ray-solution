@@ -1,0 +1,54 @@
+# Custom Ray image with TPU support (JAX + torch-xla2)
+# Based on rayproject/ray:2.55.1.68d0e4-extra-py312-cu128
+
+FROM rayproject/ray:2.55.1.68d0e4-extra-py312-cu128
+
+# Set working directory
+WORKDIR /home/ray
+
+# Avoid interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies if needed
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Switch back to ray user
+USER ray
+
+# Install JAX with TPU support
+# Note: Using JAX 0.4.35 as required for TPU v6e (Trillium)
+# See: https://docs.cloud.google.com/kubernetes-engine/docs/how-to/tpus
+RUN pip install --no-cache-dir \
+    "jax[tpu]==0.4.35" \
+    -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+
+# Install torch-xla2 (torchax)
+RUN pip install --no-cache-dir torch-xla2
+
+# Install additional dependencies for RepVGG app
+RUN pip install --no-cache-dir torchvision pillow fastapi
+
+# Verify JAX installation (torch-xla2 verification skipped due to build-time config issues)
+RUN python3 -c "import jax; print('✓ JAX version:', jax.__version__)"
+
+# Set environment variables for TPU
+# Note: JAX_PLATFORMS should NOT be set here as it prevents JAX from loading
+# when TPU is not available (e.g., on head node). Set it at runtime if needed.
+ENV TPU_LIBRARY_PATH=/lib/libtpu.so
+
+# Verify Ray is still working
+RUN python3 -c "import ray; print('✓ Ray version:', ray.__version__)"
+
+# Add labels
+LABEL maintainer="gech@google.com"
+LABEL description="Ray 2.55.1 with JAX TPU support and torch-xla2"
+LABEL version="2.55.1-tpu"
+
+# Set working directory back
+WORKDIR /home/ray
+
+# Default command (inherited from base image)
+CMD ["ray", "start", "--head", "--block"]

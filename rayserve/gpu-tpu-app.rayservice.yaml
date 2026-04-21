@@ -30,7 +30,7 @@ spec:
           num_cpus: 2
           num_gpus: 1
       runtime_env:
-        pip: ["torch", "torchvision", "pillow", "numpy", "fastapi", "ray==2.40.0"]
+        pip: ["torch", "torchvision", "pillow", "numpy", "fastapi", "ray==2.55.1"]
         env_vars:
           MODEL_VARIANT: "B0"
           NUM_CLASSES: "1000"
@@ -41,17 +41,9 @@ spec:
       deployments:
       - name: RepVGGDeployment
         num_replicas: 1
-      runtime_env:
-        pip:
-          - "torch"
-          - "torchvision"
-          - "pillow"
-          - "fastapi"
-          - "ray==2.40.0"
-        env_vars:
-          MODEL_VARIANT: "B0"
-          NUM_CLASSES: "1000"
-          ENABLE_TPU: "false"
+        ray_actor_options:
+          num_cpus: 1
+          resources: {"TPU": 1}
   rayClusterConfig:
     headGroupSpec:
       rayStartParams:
@@ -64,7 +56,7 @@ spec:
         spec:
           containers:
           - name: ray-head
-            image: rayproject/ray:2.40.0-py312-gpu
+            image: us-central1-docker.pkg.dev/gpu-launchpad-playground/gech-ray-gke/ray-tpu:2.55.1
             resources:
               limits:
                 cpu: "2"
@@ -112,7 +104,7 @@ spec:
         spec:
           containers:
           - name: llm
-            image: rayproject/ray:2.40.0-py312-gpu
+            image: rayproject/ray:2.55.1.68d0e4-extra-py312-cu128
             env:
             - name: HUGGING_FACE_HUB_TOKEN
               valueFrom:
@@ -158,8 +150,8 @@ spec:
         spec:
           containers:
             - name: ray-worker
-              image: rayproject/ray:2.40.0-py312-gpu
-              imagePullPolicy: IfNotPresent
+              image: us-central1-docker.pkg.dev/gpu-launchpad-playground/gech-ray-gke/ray-tpu:2.55.1
+              imagePullPolicy: Always
               resources:
                 limits:
                   cpu: "1"
@@ -179,6 +171,14 @@ spec:
                       key: hf_api_token
                 - name: PYTHONPATH
                   value: "/rayserve/apps:$PYTHONPATH"
+                - name: MODEL_VARIANT
+                  value: "B0"
+                - name: NUM_CLASSES
+                  value: "1000"
+                - name: ENABLE_TPU
+                  value: "true"
+                - name: TPU_LIBRARY_PATH
+                  value: "/home/ray/anaconda3/lib/python3.12/site-packages/libtpu/libtpu.so"
               volumeMounts:
               - name: dshm
                 mountPath: /dev/shm
