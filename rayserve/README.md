@@ -1,11 +1,12 @@
-# RepVGG GPU and TPU Inference on Ray Serve
+# GPU and TPU Inference on Ray Serve
 
-Deploy RepVGG image classification models on both GPU (NVIDIA L4) and TPU (v6e) accelerators in a single RayService on GKE.
+Deploy computer vision models (RepVGG image classification and Real-ESRGAN super-resolution) on both GPU (NVIDIA L4) and TPU (v6e) accelerators in a single RayService on GKE.
 
 ---
 
 ## Table of Contents
 
+- [Available Models](#available-models)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
@@ -15,6 +16,23 @@ Deploy RepVGG image classification models on both GPU (NVIDIA L4) and TPU (v6e) 
 - [Monitoring](#monitoring)
 - [Troubleshooting](#troubleshooting)
 - [Advanced Topics](#advanced-topics)
+
+---
+
+## Available Models
+
+### RepVGG (Image Classification)
+- **GPU**: `repvgg_gpu_app.py` - Fast inference on NVIDIA L4 with FP16
+- **TPU**: `repvgg_tpu_app.py` - TPU v6e acceleration with torch-xla2
+- **Use Case**: ImageNet-style classification (1000 classes)
+- **Endpoints**: `/gpu/classify`, `/tpu/classify`
+
+### Real-ESRGAN (Image Super-Resolution)
+- **GPU**: `realesrgan_gpu_app.py` - High-quality upscaling on NVIDIA L4
+- **TPU**: `realesrgan_tpu_app.py` - TPU v6e acceleration with torch-xla2
+- **Use Case**: 2x/4x image upscaling and restoration
+- **Endpoints**: `/gpu/upscale`, `/tpu/upscale`
+- **Features**: Tile processing for large images, multiple model variants
 
 ---
 
@@ -34,7 +52,7 @@ kubectl create configmap repvgg-apps \
   -n default
 
 # Deploy RayService
-kubectl apply -f gpu-tpu-app.rayservice.yaml
+kubectl apply -f repvgg-gpu-tpu-app.rayservice.yaml
 
 # Wait for pods (takes ~2 minutes)
 kubectl get pods -n default -w | grep gpu-tpu-mix
@@ -232,7 +250,7 @@ kubectl describe configmap repvgg-apps -n default
 
 ```bash
 # Apply RayService configuration
-kubectl apply -f gpu-tpu-app.rayservice.yaml
+kubectl apply -f repvgg-gpu-tpu-app.rayservice.yaml
 
 # Verify RayService creation
 kubectl get rayservice gpu-tpu-mix -n default
@@ -464,6 +482,49 @@ Same request/response format as GPU endpoint, with `"device": "TPU (JAX/XLA)"`.
 }
 ```
 
+### Real-ESRGAN Endpoints
+
+#### GPU/TPU Upscale
+```
+POST /gpu/upscale   (or /tpu/upscale)
+Content-Type: application/json
+```
+
+**Request**:
+```json
+{
+  "image": "<base64-encoded-image>",
+  "tile_size": 512,
+  "return_image": true
+}
+```
+
+**Response**:
+```json
+{
+  "model": "Real-ESRGAN",
+  "device": "cuda:0",
+  "input_size": {
+    "width": 256,
+    "height": 256
+  },
+  "output_size": {
+    "width": 1024,
+    "height": 1024
+  },
+  "scale": 4,
+  "image": "data:image/png;base64,..."
+}
+```
+
+#### Real-ESRGAN Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `image` | string | Yes | - | Base64-encoded image (JPEG, PNG, etc.) |
+| `tile_size` | integer | No | 0 (disabled) | Tile size for large images (e.g., 512) |
+| `return_image` | boolean | No | true | Return base64 image in response |
+
 ---
 
 ## Monitoring
@@ -624,17 +685,17 @@ kubectl create configmap repvgg-apps \
 
 # Restart RayService to pick up changes
 kubectl delete rayservice gpu-tpu-mix -n default
-kubectl apply -f gpu-tpu-app.rayservice.yaml
+kubectl apply -f repvgg-gpu-tpu-app.rayservice.yaml
 ```
 
 #### Update RayService Configuration
 
 ```bash
 # Edit YAML file
-vim gpu-tpu-app.rayservice.yaml
+vim repvgg-gpu-tpu-app.rayservice.yaml
 
 # Apply changes
-kubectl apply -f gpu-tpu-app.rayservice.yaml
+kubectl apply -f repvgg-gpu-tpu-app.rayservice.yaml
 
 # Monitor rollout
 kubectl get rayservice gpu-tpu-mix -n default -w
@@ -690,15 +751,19 @@ kubectl get svc -n default | grep gpu-tpu-mix
 ## Files Overview
 
 ```
-gke-ray-solution/rayserve/
+gke-ray-demo/rayserve/
 ├── README.md                      # This file - comprehensive guide
 ├── QUICK_REFERENCE.md             # Quick reference card
 ├── TPU_SETUP_GUIDE.md             # Detailed TPU setup and troubleshooting
 ├── SCRIPTS_README.md              # Script documentation
-├── gpu-tpu-app.rayservice.yaml    # RayService definition
+├── repvgg-gpu-tpu-app.rayservice.yaml  # RepVGG RayService definition
 ├── Dockerfile.ray-tpu             # Custom Docker image for TPU
-├── repvgg_gpu_app.py              # GPU inference application
-├── repvgg_tpu_app.py              # TPU inference application
+├── repvgg_gpu_app.py              # RepVGG GPU inference
+├── repvgg_tpu_app.py              # RepVGG TPU inference
+├── realesrgan_gpu_app.py          # Real-ESRGAN GPU inference
+├── realesrgan_tpu_app.py          # Real-ESRGAN TPU inference
+├── test_repvgg_apps.py            # Test RepVGG endpoints
+├── test_realesrgan_apps.py        # Test Real-ESRGAN endpoints
 ├── build-tpu-image.sh             # Build Docker image
 ├── push-tpu-image.sh              # Push image to registry
 ├── deploy-tpu-rayservice.sh       # Automated deployment
