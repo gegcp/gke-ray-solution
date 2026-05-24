@@ -1,0 +1,110 @@
+---
+# Secret for Hermes API key
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hermes-api-key
+type: Opaque
+stringData:
+  api-key: "REPLACE_WITH_GENERATED_KEY"  # Generate with: openssl rand -hex 32
+---
+# Hermes Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes-agent
+  labels:
+    app: hermes-agent
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: hermes-agent
+  template:
+    metadata:
+      labels:
+        app: hermes-agent
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-gpu
+                operator: Exists
+            - matchExpressions:
+              - key: cloud.google.com/gke-tpu-accelerator
+                operator: Exists
+      tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Equal
+        value: present
+      - effect: NoSchedule
+        key: google.com/tpu
+        operator: Equal
+        value: present
+      containers:
+      - name: hermes-agent
+        image: nousresearch/hermes-agent:latest
+        imagePullPolicy: Always
+        command: ["sleep", "356d"]
+        ports:
+        - containerPort: 8642
+          name: api
+          protocol: TCP
+        env:
+        - name: API_SERVER_ENABLED
+          value: "true"
+        - name: API_SERVER_HOST
+          value: "0.0.0.0"
+        - name: API_SERVER_PORT
+          value: "8642"
+        - name: API_SERVER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: hermes-api-key
+              key: api-key
+        - name: API_SERVER_CORS_ORIGINS
+          value: "*"
+        # Configure to use vLLM inference gateway
+        - name: OPENAI_API_BASE
+          value: "http://10.128.0.203/v1"
+        - name: OPENAI_API_KEY
+          value: "not-needed"  # vLLM doesn't require API key
+        - name: DEFAULT_MODEL
+          value: "google/gemma-3-1b-it"
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+        volumeMounts:
+        - name: hermes-data
+          mountPath: /opt/data
+      volumes:
+      - name: hermes-data
+        emptyDir: {}
+      restartPolicy: Always
+---
+# Service for Hermes Agent API
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes-agent
+  labels:
+    app: hermes-agent
+spec:
+  type: LoadBalancer
+  selector:
+    app: hermes-agent
+  ports:
+  - protocol: TCP
+    port: 8642
+    targetPort: 8642
+    name: api
+  # For internal-only access, add this annotation:
+  # annotations:
+  #   networking.gke.io/load-balancer-type: "Internal"
