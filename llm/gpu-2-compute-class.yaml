@@ -5,9 +5,10 @@ metadata:
 spec:
   whenUnsatisfiable: ScaleUpAnyway
   priorities:
-  - machineType: g2-standard-8
+  - machineType: g4-standard-48
     spot: true
-  - machineType: g2-standard-8
+  - machineType: g4-standard-48
     spot: false
+
   nodePoolAutoCreation:
     enabled: true

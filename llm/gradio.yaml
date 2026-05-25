@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gradio
+  name: gradio-chatbot
   labels:
-    app: gradio
+    app: gradio-chatbot
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: gradio
+      app: gradio-chatbot
   template:
     metadata:
       labels:
-        app: gradio
+        app: gradio-chatbot
     spec:
       containers:
         - name: gradio
@@ -41,10 +41,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: gradio
+  name: gradio-chatbot
 spec:
   selector:
-    app: gradio
+    app: gradio-chatbot
   ports:
     - protocol: TCP
       port: 8080

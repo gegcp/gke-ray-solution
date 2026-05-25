@@ -115,10 +115,10 @@ kubectl get gateway vllm-xlb
 kubectl apply -f gradio.yaml
 
 # Get LoadBalancer IP (wait for EXTERNAL-IP)
-kubectl get svc gradio
+kubectl get svc gradio-chatbot
 
 # Or use port-forward for immediate access
-kubectl port-forward svc/gradio 8080:8080
+kubectl port-forward svc/gradio-chatbot 8080:8080
 # Then open http://localhost:8080
 ```
 

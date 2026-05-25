@@ -217,14 +217,14 @@ kubectl apply -f gradio.yaml
 
 Wait for the LoadBalancer to get an IP:
 ```bash
-kubectl get svc gradio -w
+kubectl get svc gradio-chatbot -w
 ```
 
 Access the Gradio UI:
 - **Via LoadBalancer**: `http://EXTERNAL-IP:8080`
 - **Via Port-forward**: 
   ```bash
-  kubectl port-forward svc/gradio 8080:8080
+  kubectl port-forward svc/gradio-chatbot 8080:8080
   ```
   Then open http://localhost:8080
 
@@ -336,13 +336,13 @@ If you deployed Gradio (optional), access the web interface:
 
 1. **Get the LoadBalancer IP:**
    ```bash
-   GRADIO_IP=$(kubectl get svc gradio -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+   GRADIO_IP=$(kubectl get svc gradio-chatbot -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
    echo "Gradio UI: http://$GRADIO_IP:8080"
    ```
 
 2. **Or use port-forward:**
    ```bash
-   kubectl port-forward svc/gradio 8080:8080
+   kubectl port-forward svc/gradio-chatbot 8080:8080
    ```
    Then open http://localhost:8080
 
@@ -410,7 +410,7 @@ kubectl get httproute
 # Optional components
 echo ""
 echo "Optional Components:"
-kubectl get deployment gradio 2>/dev/null && echo "✓ Gradio UI deployed"
+kubectl get deployment gradio-chatbot 2>/dev/null && echo "✓ Gradio UI deployed"
 kubectl get deployment hermes-agent 2>/dev/null && echo "✓ Hermes agents deployed"
 ```
 
@@ -595,7 +595,7 @@ echo "Remaining resources:"
 kubectl get pods -l app=vllm-gemma-3-1b
 kubectl get pods -l app=body-based-router
 kubectl get pods -l inferencepool=vllm-gemma-3-1b-epp
-kubectl get pods -l app=gradio 2>/dev/null
+kubectl get pods -l app=gradio-chatbot 2>/dev/null
 kubectl get pods -l app=hermes-agent 2>/dev/null
 
 echo "Cleanup complete!"
@@ -608,14 +608,14 @@ echo "Cleanup complete!"
 kubectl get pods -l app=vllm-gemma-3-1b
 kubectl get pods -l app=body-based-router
 kubectl get pods -l inferencepool=vllm-gemma-3-1b-epp
-kubectl get pods -l app=gradio 2>/dev/null
+kubectl get pods -l app=gradio-chatbot 2>/dev/null
 kubectl get pods -l app=hermes-agent 2>/dev/null
 
 # Check for remaining gateway
 kubectl get gateway
 
 # Check for remaining services
-kubectl get svc gradio 2>/dev/null
+kubectl get svc gradio-chatbot 2>/dev/null
 kubectl get svc hermes-agent 2>/dev/null
 
 # Check for remaining nodes
@@ -817,9 +817,9 @@ kubectl scale deployment vllm-gemma-3-1b-epp --replicas=1
 kubectl port-forward svc/vllm-gemma-3-1b 8000:8000
 
 # Gradio UI commands
-kubectl get svc gradio
-kubectl port-forward svc/gradio 8080:8080
-kubectl logs -l app=gradio --tail=20
+kubectl get svc gradio-chatbot
+kubectl port-forward svc/gradio-chatbot 8080:8080
+kubectl logs -l app=gradio-chatbot --tail=20
 
 # Hermes agents commands
 kubectl get pods -l app=hermes-agent -o wide
