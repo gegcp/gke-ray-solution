@@ -1,0 +1,52 @@
+# Service exports for us-east5 cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma-2b-it-us-east5
+  namespace: default
+spec:
+  selector:
+    rayCluster: gemma-2b-it-vllm-gpu  # RayService creates pods with this label
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: serve
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma-2b-it-tpu-us-east5
+  namespace: default
+spec:
+  selector:
+    rayCluster: gemma-2b-it-vllm-tpu  # RayService creates pods with this label
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: serve
+---
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it-us-east5
+  namespace: default
+---
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it-tpu-us-east5
+  namespace: default
+---
+# Export generic service names for load balancing across all regions
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it
+  namespace: default
+---
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it-tpu
+  namespace: default

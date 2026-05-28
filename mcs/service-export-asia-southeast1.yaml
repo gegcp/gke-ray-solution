@@ -1,0 +1,52 @@
+# Service exports for asia-southeast1 cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma-2b-it-asia-southeast1
+  namespace: default
+spec:
+  selector:
+    app: vllm-gemma-2b-it  # Match the actual pod label
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: serve
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma-2b-it-tpu-asia-southeast1
+  namespace: default
+spec:
+  selector:
+    app: vllm-gemma-2b-it-tpu  # Match the actual pod label
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: serve
+---
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it-asia-southeast1
+  namespace: default
+---
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it-tpu-asia-southeast1
+  namespace: default
+---
+# Export generic service names for load balancing across all regions
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it
+  namespace: default
+---
+kind: ServiceExport
+apiVersion: net.gke.io/v1
+metadata:
+  name: vllm-gemma-2b-it-tpu
+  namespace: default

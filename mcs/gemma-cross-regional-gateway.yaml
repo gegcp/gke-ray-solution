@@ -1,0 +1,24 @@
+# Cross-regional internal managed multi-cluster Gateway
+# This gateway provides internal load balancing across multiple GKE clusters
+---
+kind: Gateway
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: gemma-cross-regional-gateway
+  namespace: default
+spec:
+  gatewayClassName: gke-l7-cross-regional-internal-managed-mc
+  addresses:
+  - type: networking.gke.io/ephemeral-ipv4-address/asia-southeast1
+    value: "asia-southeast1"
+  - type: networking.gke.io/ephemeral-ipv4-address/us-east5
+    value: "us-east5"
+  - type: networking.gke.io/ephemeral-ipv4-address/us-central1
+    value: "us-central1"
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      kinds:
+      - kind: HTTPRoute

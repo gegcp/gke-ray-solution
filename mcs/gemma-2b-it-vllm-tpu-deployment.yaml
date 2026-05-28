@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-gemma-2b-it-tpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-gemma-2b-it-tpu
+  template:
+    metadata:
+      labels:
+        app: vllm-gemma-2b-it-tpu
+        app: vllm-gemma-2b-it-inference
+    spec:
+      #nodeSelector:
+        #cloud.google.com/gke-tpu-topology: 2x4
+        #cloud.google.com/gke-tpu-accelerator: tpu-v5-lite-podslice
+        # Following values can be used to run v6e TPUs with a reservation.
+        #cloud.google.com/gke-tpu-accelerator: tpu-v6e-slice
+        # cloud.google.com/reservation-affinity: "specific"
+        # cloud.google.com/reservation-name: v6e-reservation
+      containers:
+      - name: vllm-gemma-2b-it-tpu
+        image: docker.io/vllm/vllm-tpu:nightly
+        command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+        args:
+        - --host=0.0.0.0
+        - --port=8000
+        - --tensor-parallel-size=1
+        - --max-model-len=4096
+        - --model=google/gemma-2b-it
+        - --max-num-batched-tokens=512
+        - --max-num-seqs=128
+        env:
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-secret
+              key: hf_api_token
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            google.com/tpu: 1
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      nodeSelector:
+        cloud.google.com/compute-class: tpu-class
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gemma-2b-it-tpu
+spec:
+  selector:
+    app: vllm-gemma-2b-it-tpu
+  type: LoadBalancer
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8000
+      targetPort: 8000

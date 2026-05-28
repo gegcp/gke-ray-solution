@@ -1,0 +1,123 @@
+# HTTPRoute for intelligent routing across regions
+# This configuration provides:
+# 1. Region-specific routing via path prefixes
+# 2. Model-specific routing (GPU vs TPU)
+# 3. Default load balancing across all available backends
+---
+kind: HTTPRoute
+apiVersion: gateway.networking.k8s.io/v1
+metadata:
+  name: gemma-route
+  namespace: default
+  labels:
+    gateway: gemma-cross-regional
+spec:
+  parentRefs:
+  - name: gemma-cross-regional-gateway
+    namespace: default
+  hostnames:
+  - "gemma.internal"
+  - "vllm-gemma.internal"
+  rules:
+  # Region-specific routing for GPU backend - us-east5
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /us-east5/gpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-us-east5
+      port: 8000
+
+  # Region-specific routing for TPU backend - us-east5
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /us-east5/tpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-tpu-us-east5
+      port: 8000
+
+  # Region-specific routing for GPU backend - us-central1
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /us-central1/gpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-us-central1
+      port: 8000
+
+  # Region-specific routing for TPU backend - us-central1
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /us-central1/tpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-tpu-us-central1
+      port: 8000
+
+  # Region-specific routing for GPU backend - asia-southeast1
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /asia-southeast1/gpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-asia-southeast1
+      port: 8000
+
+  # Region-specific routing for TPU backend - asia-southeast1
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /asia-southeast1/tpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-tpu-asia-southeast1
+      port: 8000
+
+  # Model-specific routing - all GPU backends
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /gpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it
+      port: 8000
+      weight: 1
+
+  # Model-specific routing - all TPU backends
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /tpu
+    backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-tpu
+      port: 8000
+      weight: 1
+
+  # Default: load balance across all GPU and TPU backends
+  - backendRefs:
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it
+      port: 8000
+      weight: 1
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-tpu
+      port: 8000
+      weight: 1
