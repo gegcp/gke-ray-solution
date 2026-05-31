@@ -1,0 +1,115 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chatbot-app-config
+  namespace: default
+data:
+  app.py: |
+    import gradio as gr
+    import requests
+    import json
+
+    GATEWAY_URL = "http://gemma.internal/v1/chat/completions"
+
+    def chat(message, history):
+        # Convert history to messages (no system role)
+        messages = []
+        for user_msg, assistant_msg in history:
+            messages.append({"role": "user", "content": user_msg})
+            messages.append({"role": "assistant", "content": assistant_msg})
+
+        messages.append({"role": "user", "content": message})
+
+        try:
+            response = requests.post(
+                GATEWAY_URL,
+                headers={"Content-Type": "application/json"},
+                json={
+                    "model": "google/gemma-2b-it",
+                    "messages": messages,
+                    "max_tokens": 512,
+                    "temperature": 0.7
+                },
+                timeout=60
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+            else:
+                return f"Error {response.status_code}: {response.text}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    demo = gr.ChatInterface(
+        chat,
+        title="🤖 Gemma 2B IT Multi-Cluster Gateway",
+        description="Chat with Gemma 2B IT via GKE Multi-Cluster Gateway",
+        examples=[
+            "What is Kubernetes?",
+            "Explain multi-cluster gateways",
+            "Write a Python hello world"
+        ]
+    )
+
+    demo.launch(server_name="0.0.0.0", server_port=7860, share=False)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chatbot-app
+  template:
+    metadata:
+      labels:
+        app: chatbot-app
+    spec:
+      hostAliases:
+      - ip: "10.128.1.13"
+        hostnames:
+        - "gemma.internal"
+      containers:
+      - name: chatbot
+        image: python:3.11-slim
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            pip install -q gradio requests && \
+            python /app/app.py
+        ports:
+        - containerPort: 7860
+          name: http
+        volumeMounts:
+        - name: app
+          mountPath: /app
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+      volumes:
+      - name: app
+        configMap:
+          name: chatbot-app-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot-app
+  namespace: default
+spec:
+  selector:
+    app: chatbot-app
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 7860
+    protocol: TCP

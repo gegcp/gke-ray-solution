@@ -8,6 +8,11 @@ spec:
       type: tpu-v6e-slice
       count: 1
       topology: 1x1
+    reservations:
+      specific:
+      - name: oppo-reservation-20260529-065814
+        project: gpu-launchpad-playground
+      affinity: Specific       
   - spot: true
     tpu:
       type: tpu-v6e-slice
@@ -19,5 +24,6 @@ spec:
       type: tpu-v6e-slice
       count: 1
       topology: 1x1
+   
   nodePoolAutoCreation:
     enabled: true 

@@ -48,29 +48,7 @@ spec:
     name: vllm-gemma-2b-it-tpu
 ---
 # Health check policies for region-specific services
-apiVersion: networking.gke.io/v1
-kind: HealthCheckPolicy
-metadata:
-  name: vllm-gemma-us-east5-healthcheck
-  namespace: default
-spec:
-  default:
-    checkIntervalSec: 10
-    timeoutSec: 5
-    healthyThreshold: 2
-    unhealthyThreshold: 3
-    logConfig:
-      enabled: true
-    config:
-      type: HTTP
-      httpHealthCheck:
-        port: 8000
-        requestPath: /health
-  targetRef:
-    group: net.gke.io
-    kind: ServiceImport
-    name: vllm-gemma-2b-it-us-east5
----
+
 apiVersion: networking.gke.io/v1
 kind: HealthCheckPolicy
 metadata:
@@ -162,26 +140,3 @@ spec:
     group: net.gke.io
     kind: ServiceImport
     name: vllm-gemma-2b-it-asia-southeast1
----
-apiVersion: networking.gke.io/v1
-kind: HealthCheckPolicy
-metadata:
-  name: vllm-gemma-tpu-asia-southeast1-healthcheck
-  namespace: default
-spec:
-  default:
-    checkIntervalSec: 10
-    timeoutSec: 5
-    healthyThreshold: 2
-    unhealthyThreshold: 3
-    logConfig:
-      enabled: true
-    config:
-      type: HTTP
-      httpHealthCheck:
-        port: 8000
-        requestPath: /health
-  targetRef:
-    group: net.gke.io
-    kind: ServiceImport
-    name: vllm-gemma-2b-it-tpu-asia-southeast1

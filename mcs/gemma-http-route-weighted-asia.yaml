@@ -19,17 +19,6 @@ spec:
   - "gemma.internal"
   - "vllm-gemma.internal"
   rules:
-  # Region-specific routing for GPU backend - us-east5
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /us-east5/gpu
-    backendRefs:
-    - group: net.gke.io
-      kind: ServiceImport
-      name: vllm-gemma-2b-it-us-east5
-      port: 8000
-
   # Region-specific routing for TPU backend - us-east5
   - matches:
     - path:
@@ -74,17 +63,6 @@ spec:
       name: vllm-gemma-2b-it-asia-southeast1
       port: 8000
 
-  # Region-specific routing for TPU backend - asia-southeast1
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /asia-southeast1/tpu
-    backendRefs:
-    - group: net.gke.io
-      kind: ServiceImport
-      name: vllm-gemma-2b-it-tpu-asia-southeast1
-      port: 8000
-
   # Model-specific routing - all GPU backends
   - matches:
     - path:
@@ -109,32 +87,52 @@ spec:
       port: 8000
       weight: 1
 
-  # Default: load balance with higher weight to asia-southeast1
-  # Traffic distribution: asia-southeast1 ~62.5%, us-east5 ~18.75%, us-central1 ~18.75%
-  - backendRefs:
-    # Asia-southeast1 backends (2x weight)
+  # Root path routing - all backends
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    # Asia-southeast1 GPU
     - group: net.gke.io
       kind: ServiceImport
       name: vllm-gemma-2b-it-asia-southeast1
       port: 8000
-      weight: 2
-    - group: net.gke.io
-      kind: ServiceImport
-      name: vllm-gemma-2b-it-tpu-asia-southeast1
-      port: 8000
       weight: 5
-    # us-east5 backends (1x weight)
+    # us-east5 TPU
     - group: net.gke.io
       kind: ServiceImport
-      name: vllm-gemma-2b-it-us-east5
+      name: vllm-gemma-2b-it-tpu-us-east5
+      port: 8000
+      weight: 0
+    # us-central1 GPU
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-us-central1
+      port: 8000
+      weight: 0
+    # us-central1 TPU
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-tpu-us-central1
+      port: 8000
+      weight: 0
+
+  # Default: load balance across available backends
+  - backendRefs:
+    # Asia-southeast1 backends
+    - group: net.gke.io
+      kind: ServiceImport
+      name: vllm-gemma-2b-it-asia-southeast1
       port: 8000
       weight: 1
+    # us-east5 backends
     - group: net.gke.io
       kind: ServiceImport
       name: vllm-gemma-2b-it-tpu-us-east5
       port: 8000
       weight: 1
-    # us-central1 backends (1x weight)
+    # us-central1 backends (5x weight)
     - group: net.gke.io
       kind: ServiceImport
       name: vllm-gemma-2b-it-us-central1
